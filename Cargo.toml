@@ -1,0 +1,20 @@
+[package]
+name = "mcscrape"
+version = "0.0.0"
+description = "Minecraft Scraper, for scraping player count and ping and exporting it to InfluxDB."
+edition = "2021"
+
+[dependencies]
+mimalloc = { version = "0.1.29", default-features = false }
+tokio = { version = "1.21.2", features = ["full"] }
+clap = { version = "4.0.18", features = ["derive"] }
+influxdb = { version = "0.5.2", features = ["derive"] }
+
+[profile.release]
+strip = true
+lto = true
+panic = "abort"
+codegen-units = 1
+
+[target.'cfg(windows)'.build-dependencies]
+winres = "0.1.12"
