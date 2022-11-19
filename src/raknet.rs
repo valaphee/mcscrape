@@ -89,7 +89,7 @@ impl Decode for Packet {
             0x01 => Ok(Self::UnconnectedPing {
                 elapsed_time: {
                     let time: u64 = Decode::decode(decoder)?;
-                    let unconnected_magic: [u8; 16] = Decode::decode(decoder)?;
+                    let _unconnected_magic: [u8; 16] = Decode::decode(decoder)?;
                     time
                 },
                 client_guid: Decode::decode(decoder)?
@@ -98,7 +98,7 @@ impl Decode for Packet {
                 elapsed_time: Decode::decode(decoder)?,
                 server_guid: {
                     let server_guid: u64 = Decode::decode(decoder)?;
-                    let unconnected_magic: [u8; 16] = Decode::decode(decoder)?;
+                    let _unconnected_magic: [u8; 16] = Decode::decode(decoder)?;
                     server_guid
                 },
                 user_data: {

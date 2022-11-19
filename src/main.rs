@@ -18,6 +18,8 @@ static GLOBAL: MiMalloc = MiMalloc;
 struct Config {
     influx_db_url: String,
     influx_db_database: String,
+    influx_db_username: String,
+    influx_db_password: String,
     targets: Vec<ConfigTarget>
 }
 
@@ -50,6 +52,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
             Config {
                 influx_db_url: "http://localhost:8086".to_string(),
                 influx_db_database: "mcscrape".to_string(),
+                influx_db_username: "mcscrape".to_string(),
+                influx_db_password: "mcscrape".to_string(),
                 targets: vec![]
             }
         };
@@ -57,7 +61,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         config
     };
 
-    let influxdb_client = Client::new(&config.influx_db_url, &config.influx_db_database);
+    let influxdb_client = Client::new(&config.influx_db_url, &config.influx_db_database).with_auth(&config.influx_db_username, &config.influx_db_password);
 
     let raknet_bincode_config: Configuration<BigEndian, Fixint, SkipFixedArrayLength> = Configuration::default();
     let mut raknet_client = raknet::RakNetClient::new().await;
@@ -76,7 +80,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
                         elapsed_time: raknet_ping_id,
                         client_guid: 0
                     }, raknet_bincode_config).unwrap(), &config_target.target).await.unwrap();
-                    raknet_pings.insert(raknet_ping_id, (elapsed_time, config_target));
+                    raknet_pings.insert(raknet_ping_id, (elapsed_time, &config_target));
                     raknet_ping_id += 1;
                 }
                 _ => ()
