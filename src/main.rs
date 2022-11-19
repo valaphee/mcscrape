@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::error::Error;
 use std::fs::File;
 use std::path::Path;
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use std::time::{Duration, UNIX_EPOCH};
 
 use bincode::config::{BigEndian, Configuration, Fixint, SkipFixedArrayLength};
 use influxdb::{Client, InfluxDbWriteable, Timestamp};
@@ -89,7 +89,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
         while let Ok((duration, packet)) = raknet_client.rx.try_recv() {
             match packet {
-                raknet::Packet::UnconnectedPong { elapsed_time: raknet_ping_id, server_guid, user_data } => {
+                raknet::Packet::UnconnectedPong { elapsed_time: raknet_ping_id, server_guid: _, user_data } => {
                     let status: Vec<&str> = user_data.split(';').collect();
                     if status.len() >= 6 {
                         match raknet_pings.remove(&raknet_ping_id) {
