@@ -94,7 +94,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
                                     target: config_target.target.clone(),
                                     player_count: status[4].parse().unwrap(),
                                     player_limit: status[5].parse().unwrap()
-                                }.into_query("player_count")).await?;
+                                }.into_query("ping")).await?;
                             }
                             _ => ()
                         }
