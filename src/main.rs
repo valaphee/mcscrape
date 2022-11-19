@@ -61,7 +61,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     let raknet_bincode_config: Configuration<BigEndian, Fixint, SkipFixedArrayLength> = Configuration::default();
     let mut raknet_client = raknet::RakNetClient::new().await;
-    let mut raknet_pending: HashMap<u64, &ConfigTarget> = HashMap::new();
+    let mut raknet_ping_id: u64 = 0;
+    let mut raknet_pings: HashMap<u64, (u64, &ConfigTarget)> = HashMap::new();
 
     let mut interval = tokio::time::interval(Duration::from_secs(60));
     loop {
@@ -72,10 +73,11 @@ async fn main() -> Result<(), Box<dyn Error>> {
                 "raknet" => {
                     let elapsed_time = raknet_client.start_time.elapsed()?.as_millis() as u64;
                     raknet_client.socket.send_to(&bincode::encode_to_vec(raknet::Packet::UnconnectedPing {
-                        elapsed_time,
+                        elapsed_time: raknet_ping_id,
                         client_guid: 0
                     }, raknet_bincode_config).unwrap(), &config_target.target).await.unwrap();
-                    raknet_pending.insert(elapsed_time, config_target);
+                    raknet_pings.insert(raknet_ping_id, (elapsed_time, config_target));
+                    raknet_ping_id += 1;
                 }
                 _ => ()
             }
@@ -83,11 +85,11 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
         while let Ok((duration, packet)) = raknet_client.rx.try_recv() {
             match packet {
-                raknet::Packet::UnconnectedPong { elapsed_time, server_guid, user_data } => {
+                raknet::Packet::UnconnectedPong { elapsed_time: raknet_ping_id, server_guid, user_data } => {
                     let status: Vec<&str> = user_data.split(';').collect();
                     if status.len() >= 6 {
-                        match raknet_pending.remove(&elapsed_time) {
-                            Some(config_target) => {
+                        match raknet_pings.remove(&raknet_ping_id) {
+                            Some((elapsed_time, config_target)) => {
                                 influxdb_client.query(Ping {
                                     time: Timestamp::Seconds((raknet_client.start_time.duration_since(UNIX_EPOCH)?.as_secs() + duration.as_secs()) as u128),
                                     kind: config_target.kind.clone(),
