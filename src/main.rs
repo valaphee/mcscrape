@@ -68,7 +68,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         let current_time = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs() as u128;
 
         for config_target in &config.targets {
-            match config_target.target.as_str() {
+            match config_target.kind.as_str() {
                 "raknet" => {
                     let raknet_elapsed_time = raknet_start_time.elapsed()?.as_millis() as u64;
                     raknet_client.socket.send_to(&bincode::encode_to_vec(raknet::Packet::UnconnectedPing {
@@ -92,8 +92,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
                                     time: Timestamp::Seconds(current_time),
                                     kind: config_target.kind.clone(),
                                     target: config_target.target.clone(),
-                                    player_limit: status[4].parse().unwrap(),
-                                    player_count: status[5].parse().unwrap()
+                                    player_count: status[4].parse().unwrap(),
+                                    player_limit: status[5].parse().unwrap()
                                 }.into_query("player_count")).await?;
                             }
                             _ => ()

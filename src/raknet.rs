@@ -10,8 +10,6 @@ use bincode::error::{AllowedEnumVariants, DecodeError, EncodeError};
 use tokio::net::UdpSocket;
 use tokio::sync::mpsc::Receiver;
 
-use crate::raknet;
-
 pub struct RakNetClient {
     pub socket: Arc<UdpSocket>,
     pub rx: Receiver<Packet>
