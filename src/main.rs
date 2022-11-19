@@ -65,6 +65,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     let raknet_bincode_config: Configuration<BigEndian, Fixint, SkipFixedArrayLength> = Configuration::default();
     let mut raknet_client = raknet::RakNetClient::new().await;
+    let raknet_guid = rand::random();
     let mut raknet_ping_id: u64 = 0;
     let mut raknet_pings: HashMap<u64, (u64, &ConfigTarget)> = HashMap::new();
 
@@ -78,7 +79,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
                     let elapsed_time = raknet_client.start_time.elapsed()?.as_millis() as u64;
                     raknet_client.socket.send_to(&bincode::encode_to_vec(raknet::Packet::UnconnectedPing {
                         elapsed_time: raknet_ping_id,
-                        client_guid: 0
+                        client_guid: raknet_guid
                     }, raknet_bincode_config).unwrap(), &config_target.target).await.unwrap();
                     raknet_pings.insert(raknet_ping_id, (elapsed_time, &config_target));
                     raknet_ping_id += 1;
