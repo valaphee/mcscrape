@@ -1,32 +1,107 @@
+use std::collections::HashMap;
 use std::error::Error;
+use std::fs::File;
+use std::path::Path;
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
+use bincode::config::{BigEndian, Configuration, Fixint, SkipFixedArrayLength};
 use influxdb::{Client, InfluxDbWriteable, Timestamp};
 use mimalloc::MiMalloc;
+use serde::{Deserialize, Serialize};
+
+mod raknet;
 
 #[global_allocator]
 static GLOBAL: MiMalloc = MiMalloc;
 
-#[derive(InfluxDbWriteable)]
-struct PlayerCount {
+#[derive(Serialize, Deserialize, Debug)]
+struct Config {
+    influx_db_url: String,
+    influx_db_database: String,
+    targets: Vec<ConfigTarget>
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+struct ConfigTarget {
+    kind: String,
+    target: String
+}
+
+#[derive(InfluxDbWriteable, Debug)]
+struct Ping {
     time: Timestamp,
     #[influxdb(tag)]
-    server: String,
-    player_count: u32
+    kind: String,
+    #[influxdb(tag)]
+    target: String,
+    player_count: u32,
+    player_limit: u32
 }
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
-    println!("heee");
+    let config = {
+        let config_path = Path::new("config.json");
+        let config = if config_path.exists() {
+            serde_json::from_reader(File::open(config_path)?)?
+        } else {
+            Config {
+                influx_db_url: "http://localhost:8086".to_string(),
+                influx_db_database: "mcscrape".to_string(),
+                targets: vec![]
+            }
+        };
+        serde_json::to_writer_pretty(File::create(config_path)?, &config)?;
+        config
+    };
 
-    let client = Client::new("http://localhost:8086", "mcscrape");
+    let influxdb_client = Client::new(&config.influx_db_url, &config.influx_db_database);
 
-    client.query(
-        PlayerCount {
-            time: Timestamp::Hours(1).into(),
-            server: "test".to_string(),
-            player_count: 1
-        }.into_query("player_count")
-    ).await?;
+    let raknet_bincode_config: Configuration<BigEndian, Fixint, SkipFixedArrayLength> = Configuration::default();
+    let mut raknet_client = raknet::RakNetClient::new().await;
+    let raknet_start_time = SystemTime::now();
+    let mut raknet_pending: HashMap<u64, &ConfigTarget> = HashMap::new();
 
-    Ok(())
+    let mut interval = tokio::time::interval(Duration::from_secs(60));
+    loop {
+        interval.tick().await;
+        let current_time = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs() as u128;
+
+        for config_target in &config.targets {
+            match config_target.target.as_str() {
+                "raknet" => {
+                    let raknet_elapsed_time = raknet_start_time.elapsed()?.as_millis() as u64;
+                    raknet_client.socket.send_to(&bincode::encode_to_vec(raknet::Packet::UnconnectedPing {
+                        elapsed_time: raknet_elapsed_time,
+                        client_guid: 0
+                    }, raknet_bincode_config).unwrap(), &config_target.target).await.unwrap();
+                    raknet_pending.insert(raknet_elapsed_time, config_target);
+                }
+                _ => ()
+            }
+        }
+
+        while let Some(packet) = raknet_client.rx.recv().await {
+            match packet {
+                raknet::Packet::UnconnectedPong { elapsed_time, server_guid, user_data } => {
+                    let status: Vec<&str> = user_data.split(';').collect();
+                    if status.len() >= 6 {
+                        match raknet_pending.remove(&elapsed_time) {
+                            Some(config_target) => {
+                                influxdb_client.query(Ping {
+                                    time: Timestamp::Seconds(current_time),
+                                    kind: config_target.kind.clone(),
+                                    target: config_target.target.clone(),
+                                    player_limit: status[4].parse().unwrap(),
+                                    player_count: status[5].parse().unwrap()
+                                }.into_query("player_count")).await?;
+                            }
+                            _ => ()
+                        }
+                    }
+                }
+                _ => ()
+            }
+        }
+    }
 }
