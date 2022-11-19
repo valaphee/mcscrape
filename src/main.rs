@@ -24,6 +24,7 @@ struct Config {
 #[derive(Serialize, Deserialize, Debug)]
 struct ConfigTarget {
     kind: String,
+    name: String,
     target: String
 }
 
@@ -33,9 +34,10 @@ struct Ping {
     #[influxdb(tag)]
     kind: String,
     #[influxdb(tag)]
-    target: String,
+    name: String,
     player_count: u32,
-    player_limit: u32
+    player_limit: u32,
+    rtt: u16
 }
 
 #[tokio::main]
@@ -59,18 +61,16 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     let raknet_bincode_config: Configuration<BigEndian, Fixint, SkipFixedArrayLength> = Configuration::default();
     let mut raknet_client = raknet::RakNetClient::new().await;
-    let raknet_start_time = SystemTime::now();
     let mut raknet_pending: HashMap<u64, &ConfigTarget> = HashMap::new();
 
     let mut interval = tokio::time::interval(Duration::from_secs(60));
     loop {
         interval.tick().await;
-        let current_time = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs() as u128;
 
         for config_target in &config.targets {
             match config_target.kind.as_str() {
                 "raknet" => {
-                    let elapsed_time = raknet_start_time.elapsed()?.as_millis() as u64;
+                    let elapsed_time = raknet_client.start_time.elapsed()?.as_millis() as u64;
                     raknet_client.socket.send_to(&bincode::encode_to_vec(raknet::Packet::UnconnectedPing {
                         elapsed_time,
                         client_guid: 0
@@ -81,7 +81,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
             }
         }
 
-        while let Ok(packet) = raknet_client.rx.try_recv() {
+        while let Ok((duration, packet)) = raknet_client.rx.try_recv() {
             match packet {
                 raknet::Packet::UnconnectedPong { elapsed_time, server_guid, user_data } => {
                     let status: Vec<&str> = user_data.split(';').collect();
@@ -89,11 +89,12 @@ async fn main() -> Result<(), Box<dyn Error>> {
                         match raknet_pending.remove(&elapsed_time) {
                             Some(config_target) => {
                                 influxdb_client.query(Ping {
-                                    time: Timestamp::Seconds(current_time),
+                                    time: Timestamp::Seconds((raknet_client.start_time.duration_since(UNIX_EPOCH)?.as_secs() + duration.as_secs()) as u128),
                                     kind: config_target.kind.clone(),
-                                    target: config_target.target.clone(),
+                                    name: config_target.name.clone(),
                                     player_count: status[4].parse().unwrap(),
-                                    player_limit: status[5].parse().unwrap()
+                                    player_limit: status[5].parse().unwrap(),
+                                    rtt: ((duration.as_millis() as u64) - elapsed_time) as u16
                                 }.into_query("ping")).await?;
                             }
                             _ => ()

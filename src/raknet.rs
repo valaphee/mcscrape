@@ -1,4 +1,5 @@
 use std::sync::Arc;
+use std::time::{Duration, SystemTime};
 
 use bincode::{Decode, Encode};
 use bincode::config::{BigEndian, Configuration, Fixint, SkipFixedArrayLength};
@@ -11,15 +12,18 @@ use tokio::net::UdpSocket;
 use tokio::sync::mpsc::Receiver;
 
 pub struct RakNetClient {
+    pub start_time: Arc<SystemTime>,
     pub socket: Arc<UdpSocket>,
-    pub rx: Receiver<Packet>
+    pub rx: Receiver<(Duration, Packet)>
 }
 
 impl RakNetClient {
     pub async fn new() -> Self {
+        let start_time = Arc::new(SystemTime::now());
         let socket = Arc::new(UdpSocket::bind("[::]:0").await.unwrap());
         let (tx, rx) = tokio::sync::mpsc::channel(1024);
 
+        let handler_start_time = start_time.clone();
         let handler_socket = socket.clone();
         tokio::spawn(async move {
             let bincode_config: Configuration<BigEndian, Fixint, SkipFixedArrayLength> = Configuration::default();
@@ -27,12 +31,13 @@ impl RakNetClient {
             let mut buffer = [0; 1024];
             loop {
                 let (buffer_size, _sender) = handler_socket.recv_from(&mut buffer).await.unwrap();
+                let elapsed_time = handler_start_time.elapsed().unwrap();
                 let packet: Packet = bincode::decode_from_slice(&buffer[..buffer_size], bincode_config).unwrap().0;
-                tx.send(packet).await;
+                tx.send((elapsed_time, packet)).await.expect("");
             }
         });
 
-        Self { socket, rx }
+        Self { start_time, socket, rx }
     }
 }
 
