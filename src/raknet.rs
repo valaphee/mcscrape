@@ -18,7 +18,7 @@ pub struct RakNetClient {
 impl RakNetClient {
     pub async fn new() -> Self {
         let socket = Arc::new(UdpSocket::bind("[::]:0").await.unwrap());
-        let (tx, rx) = tokio::sync::mpsc::channel(32);
+        let (tx, rx) = tokio::sync::mpsc::channel(1024);
 
         let handler_socket = socket.clone();
         tokio::spawn(async move {

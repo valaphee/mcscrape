@@ -70,18 +70,18 @@ async fn main() -> Result<(), Box<dyn Error>> {
         for config_target in &config.targets {
             match config_target.kind.as_str() {
                 "raknet" => {
-                    let raknet_elapsed_time = raknet_start_time.elapsed()?.as_millis() as u64;
+                    let elapsed_time = raknet_start_time.elapsed()?.as_millis() as u64;
                     raknet_client.socket.send_to(&bincode::encode_to_vec(raknet::Packet::UnconnectedPing {
-                        elapsed_time: raknet_elapsed_time,
+                        elapsed_time,
                         client_guid: 0
                     }, raknet_bincode_config).unwrap(), &config_target.target).await.unwrap();
-                    raknet_pending.insert(raknet_elapsed_time, config_target);
+                    raknet_pending.insert(elapsed_time, config_target);
                 }
                 _ => ()
             }
         }
 
-        while let Some(packet) = raknet_client.rx.recv().await {
+        while let Ok(packet) = raknet_client.rx.try_recv() {
             match packet {
                 raknet::Packet::UnconnectedPong { elapsed_time, server_guid, user_data } => {
                     let status: Vec<&str> = user_data.split(';').collect();
