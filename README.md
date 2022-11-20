@@ -5,4 +5,6 @@
 
 Minecraft Scraper, for scraping player count and ping and exporting it to InfluxDB.
 
-## Usage
+## Use case
+### Grafana
+[![Grafana](imgs/grafana.png?raw=true)](https://grafana.valaphee.com)

@@ -1,6 +1,6 @@
 [package]
 name = "mcscrape"
-version = "0.0.0"
+version = "1.0.0"
 description = "Minecraft Scraper, for scraping player count and ping and exporting it to InfluxDB."
 edition = "2021"
 
