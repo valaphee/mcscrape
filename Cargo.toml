@@ -1,11 +1,10 @@
 [package]
 name = "mcscrape"
 version = "1.0.0"
-description = "Minecraft Scraper, for scraping player count and ping and exporting it to InfluxDB."
+description = "Scrape Minecraft servers player count and ping and exporting it to InfluxDB."
 edition = "2021"
 
 [dependencies]
-mimalloc = { version = "0.1.29", default-features = false }
 tokio = { version = "1.21.2", features = ["full"] }
 clap = { version = "4.0.18", features = ["derive"] }
 serde = { version = "1.0.147", features = ["derive"] }

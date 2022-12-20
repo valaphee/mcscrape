@@ -4,7 +4,7 @@ use std::io;
 fn main() -> io::Result<()> {
     #[cfg(windows)] {
         WindowsResource::new()
-            .set("FileDescription", "Minecraft Scraper, for scraping player count and ping and exporting it to InfluxDB.")
+            .set("FileDescription", "Scrape Minecraft servers player count and ping and exporting it to InfluxDB.")
             .set("ProductName", "Minecraft Scraper")
             .set("OriginalFilename", "mcscrape.exe")
             .set("LegalCopyright", "Copyright (c) 2022, Valaphee.")

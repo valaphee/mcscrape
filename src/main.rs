@@ -6,41 +6,9 @@ use std::time::{Duration, UNIX_EPOCH};
 
 use bincode::config::{BigEndian, Configuration, Fixint, SkipFixedArrayLength};
 use influxdb::{Client, InfluxDbWriteable, Timestamp};
-use mimalloc::MiMalloc;
 use serde::{Deserialize, Serialize};
 
 mod raknet;
-
-#[global_allocator]
-static GLOBAL: MiMalloc = MiMalloc;
-
-#[derive(Serialize, Deserialize, Debug)]
-struct Config {
-    influx_db_url: String,
-    influx_db_database: String,
-    influx_db_username: String,
-    influx_db_password: String,
-    targets: Vec<ConfigTarget>
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-struct ConfigTarget {
-    kind: String,
-    name: String,
-    target: String
-}
-
-#[derive(InfluxDbWriteable, Debug)]
-struct Ping {
-    time: Timestamp,
-    #[influxdb(tag)]
-    kind: String,
-    #[influxdb(tag)]
-    name: String,
-    player_count: u32,
-    player_limit: u32,
-    rtt: u16
-}
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
@@ -112,4 +80,32 @@ async fn main() -> Result<(), Box<dyn Error>> {
             }
         }
     }
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+struct Config {
+    influx_db_url: String,
+    influx_db_database: String,
+    influx_db_username: String,
+    influx_db_password: String,
+    targets: Vec<ConfigTarget>
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+struct ConfigTarget {
+    kind: String,
+    name: String,
+    target: String
+}
+
+#[derive(InfluxDbWriteable, Debug)]
+struct Ping {
+    time: Timestamp,
+    #[influxdb(tag)]
+    kind: String,
+    #[influxdb(tag)]
+    name: String,
+    player_count: u32,
+    player_limit: u32,
+    rtt: u16
 }

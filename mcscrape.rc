@@ -59,7 +59,7 @@ BEGIN
         BLOCK "040004b0"
         BEGIN
             VALUE "CompanyName", "Valaphee"
-            VALUE "FileDescription", "Minecraft Scraper, for scraping player count and ping and exporting it to InfluxDB."
+            VALUE "FileDescription", "Scrape Minecraft servers player count and ping and exporting it to InfluxDB."
             VALUE "FileVersion", "0.0.0.0"
             VALUE "InternalName", "mcscrape.exe"
             VALUE "LegalCopyright", "Copyright (c) 2022, Valaphee."
